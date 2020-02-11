@@ -1,0 +1,87 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "adminUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "Administrator username of the deployed VM (alphanumeric characters only)"
+            }
+        },
+        "vmName": {
+            "type": "string",
+            "metadata": {
+                "description": "The unique name of the virtual machine"
+            }
+        },
+        "dockerRepository": {
+            "type": "string",
+            "metadata": {
+                "description": "The docker repository uri"
+            }
+        },
+        "dockerLogin": {
+            "type": "string",
+            "metadata": {
+                "description": "The docker username to login to the docker repository"
+            }
+        },
+        "dockerPassword": {
+            "type": "securestring",
+            "metadata": {
+                "description": "The docker password to login to the docker repository"
+            }
+        },
+        "dockerImage": {
+            "type": "string",
+            "metadata": {
+                "description": "The docker image name"
+            }
+        },
+        "artifactsLocationUrl": {
+            "type": "string",
+            "metadata": {
+                "description": "The base URI where artifacts required by this template are located including a trailing '/'"
+            }
+        },
+        "artifactsLocationUrlSasToken": {
+            "type": "string",
+            "metadata": {
+                "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated. Use the defaultValue if the staging location is not secured."
+            }
+        },
+        "location": {
+            "type": "string",
+            "metadata": {
+                "description": "Region that the resources will be deployed to"
+            }
+        }
+    },
+    "variables": {
+        "apiVersionVirtualMachineExtensions": "2019-07-01"
+    },
+    "resources": [
+        {
+            "apiVersion": "[variables('apiVersionVirtualMachineExtensions')]",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(parameters('vmName'), '/extensionScript')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "fileUris": [
+                        "[uri(parameters('artifactsLocationUrl'), concat('scripts/config.sh', parameters('artifactsLocationUrlSasToken')))]",
+                        "[uri(parameters('artifactsLocationUrl'), concat('scripts/docker-compose.yml', parameters('artifactsLocationUrlSasToken')))]"
+                    ]
+                },
+                "protectedSettings": {
+                    "commandToExecute": "[concat('/bin/bash config.sh \"', parameters('adminUsername'), '\" \"', parameters('artifactsLocationUrl'), '\" \"', parameters('artifactsLocationUrlSasToken'), '\" \"', parameters('dockerRepository'), '\" \"', parameters('dockerLogin'), '\" \"', parameters('dockerPassword'), '\" \"', parameters('dockerImage'), '\"')]"
+                }
+            }
+        }
+    ],
+    "outputs": {}
+}

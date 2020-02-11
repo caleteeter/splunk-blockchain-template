@@ -1,0 +1,290 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "prefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix for naming of resources that will be deployed.  This should be less than 6 characters in length, including lower case alpha and numbers only."
+            },
+            "maxLength": 6
+        },
+        "authType": {
+            "type": "string",
+            "allowedValues": [
+                "password",
+                "sshPublicKey"
+            ],
+            "metadata": {
+                "description": "Authentication type for SSH access"
+            }
+        },
+        "adminUsername": {
+            "type": "string",
+            "metadata": {
+                "description": "Administrator username of the deployed VM (alphanumeric characters only)"
+            }
+        },
+        "adminPassword": {
+            "type": "securestring",
+            "defaultValue": "",
+            "metadata": {
+                "description": "Administrator password for the deployed VM"
+            }
+        },
+        "adminSSHKey": {
+            "type": "string",
+            "defaultValue": "",
+            "metadata": {
+                "description": "SSH RSA public key file as string"
+            }
+        },
+        "vmStoragePerformance": {
+            "type": "string",
+            "defaultValue": "Premium",
+            "allowedValues": [
+                "Standard",
+                "Premium"
+            ],
+            "metadata": {
+                "description": "Storage performance level for the deployed VM"
+            }
+        },
+        "vmSize": {
+            "type": "string",
+            "defaultValue": "Standard_D4s_v3",
+            "metadata": {
+                "description": "Size of the virtual machine used for the deployed VM"
+            }
+        },
+        "location": {
+            "type": "string",
+            "metadata": {
+                "description": "Region that the resources will be deployed to"
+            }
+        },
+        "_artifactsLocation": {
+            "type": "string",
+            "defaultValue": "[deployment().properties.templateLink.uri]",
+            "metadata": {
+                "description": "The base URI where artifacts required by this template are located including a trailing '/'"
+            }
+        },
+        "_artifactsLocationSasToken": {
+            "type": "securestring",
+            "defaultValue": "",
+            "metadata": {
+                "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated.  Use the defaultValue if the staging location is not secured."
+            }
+        }
+    },
+    "variables": {
+        "apiVersionDeployments": "2019-10-01",
+        "apiVersionPublicIPAddresses": "2019-11-01",
+        "apiVersionNetworkSecurityGroups": "2019-11-01",
+        "apiVersionVirtualNetworks": "2019-11-01",
+        "namePrefix": "[toLower(substring(concat(parameters('prefix'), uniqueString(resourceGroup().id)), 0, 9))]",
+        "adminPasswordOrSSHKey": "[if(equals(parameters('authType'), 'password'), parameters('adminPassword'), parameters('adminSSHKey'))]",
+        "sshPort": 22,
+        "webInternalPort": 80,
+        "webExternalPort": 8000,
+        "dnsName": "[variables('namePrefix')]",
+        "vnet": {
+            "name": "[concat(variables('namePrefix'), '-vnet')]",
+            "addressSpacePrefix": "10.52.0.0/16"
+        },
+        "subnetName": "[concat(variables('namePrefix'), 'subnet')]",
+        "subnetPrefix": "10.52.0.0/24",
+        "subnetPropertiesArray": [
+            {
+                "name": "[variables('subnetName')]",
+                "properties": {
+                    "addressPrefix": "[variables('subnetPrefix')]"
+                }
+            }
+        ],
+        "subnetRef": "[resourceId('Microsoft.Network/virtualNetworks/subnets', variables('vnet').name, variables('subnetName'))]",
+        "nsgName": "[concat(variables('namePrefix'), '-nsg')]",
+        "nicName": "[concat(variables('namePrefix'), '-nic')]",
+        "publicIpName": "[concat(variables('namePrefix'), '-pip')]",
+        "dockerRepository": "##DOCKER_REPO##",
+        "dockerLogin": "##DOCKER_LOGIN##",
+        "dockerPassword": "##DOCKER_PASSWORD",
+        "dockerImage": "##DOCKER_IMAGE##",
+        "vmImage": {
+            "publisher": "Canonical",
+            "offer": "UbuntuServer",
+            "sku": "18.04-LTS",
+            "version": "latest"
+        },
+        "trackingGuid": "97C69D82-6C87-4EF1-9106-1567FF01CAB3"
+    },
+    "resources": [
+        {
+            "apiVersion": "[variables('apiVersionDeployments')]",
+            "name": "[variables('trackingGuid')]",
+            "type": "Microsoft.Resources/deployments",
+            "properties": {
+                "mode": "Incremental",
+                "template": {
+                    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+                    "contentVersion": "1.0.0.0",
+                    "resources": []
+                }
+            }
+        },
+        {
+            "apiVersion": "[variables('apiVersionPublicIPAddresses')]",
+            "type": "Microsoft.Network/publicIPAddresses",
+            "name": "[variables('publicIpName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "publicIPAllocationMethod": "Dynamic",
+                "dnsSettings": {
+                    "domainNameLabel": "[variables('dnsName')]"
+                }
+            }
+        },
+        {
+            "apiVersion": "[variables('apiVersionNetworkSecurityGroups')]",
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "name": "[variables('nsgName')]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "allow-ssh",
+                        "properties": {
+                            "description": "Allow SSH",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "[variables('sshPort')]",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 120,
+                            "direction": "Inbound"
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "apiVersion": "[variables('apiVersionVirtualNetworks')]",
+            "type": "Microsoft.Network/virtualNetworks",
+            "name": "[variables('vnet').name]",
+            "location": "[parameters('location')]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[variables('vnet').addressSpacePrefix]"
+                    ]
+                },
+                "subnets": "[variables('subnetPropertiesArray')]"
+            }
+        },
+        {
+            "apiVersion": "[variables('apiVersionDeployments')]",
+            "name": "[concat(variables('namePrefix'), '-vm')]",
+            "type": "Microsoft.Resources/deployments",
+            "dependsOn": [
+                "[concat('Microsoft.Network/virtualNetworks/', variables('vNet').name)]",
+                "[concat('Microsoft.Network/networkSecurityGroups/', variables('nsgName'))]",
+                "[concat('Microsoft.Network/publicIpAddresses/', variables('publicIpName'))]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[uri(parameters('_artifactsLocation'), concat('nested/vm.json', parameters('_artifactsLocationSasToken')))]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "authType": {
+                        "value": "[parameters('authType')]"
+                    },
+                    "adminUsername": {
+                        "value": "[parameters('adminUsername')]"
+                    },
+                    "adminPasswordOrKey": {
+                        "value": "[variables('adminPasswordOrSSHKey')]"
+                    },
+                    "vmSize": {
+                        "value": "[parameters('vmSize')]"
+                    },
+                    "storagePerformance": {
+                        "value": "[parameters('vmStoragePerformance')]"
+                    },
+                    "vmName": {
+                        "value": "[variables('namePrefix')]"
+                    },
+                    "dnsName": {
+                        "value": "[variables('dnsName')]"
+                    },
+                    "nicName": {
+                        "value": "[concat(variables('namePrefix'), '-nic')]"
+                    },
+                    "nsgName": {
+                        "value": "[variables('nsgName')]"
+                    },
+                    "subnetRef": {
+                        "value": "[variables('subnetRef')]"
+                    },
+                    "publicIpName": {
+                        "value": "[variables('publicIpName')]"
+                    },
+                    "vmImage": {
+                        "value": "[variables('vmImage')]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
+                    }
+                }
+            }
+        },
+        {
+            "apiVersion": "[variables('apiVersionDeployments')]",
+            "name": "[concat(variables('namePrefix'), '-vmext')]",
+            "type": "Microsoft.Resources/deployments",
+            "dependsOn": [
+                "[concat(variables('namePrefix'), '-vm')]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "uri": "[uri(parameters('_artifactsLocation'), concat('nested/vmExtension.json', parameters('_artifactsLocationSasToken')))]",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "adminUsername": {
+                        "value": "[parameters('adminUsername')]"
+                    },
+                    "vmName": {
+                        "value": "[variables('namePrefix')]"
+                    },
+                    "dockerRepository": {
+                        "value": "[variables('dockerRepository')]"
+                    },
+                    "dockerLogin": {
+                        "value": "[variables('dockerLogin')]"
+                    },
+                    "dockerPassword": {
+                        "value": "[variables('dockerPassword')]"
+                    },
+                    "dockerImage": {
+                        "value": "[variables('dockerImage')]"
+                    },
+                    "artifactsLocationUrl": {
+                        "value": "[parameters('_artifactsLocation')]"
+                    },
+                    "artifactsLocationUrlSasToken": {
+                        "value": "[parameters('_artifactsLocationSasToken')]"
+                    },
+                    "location": {
+                        "value": "[parameters('location')]"
+                    }
+                }
+            }
+        }
+    ],
+    "outputs": {}
+}
