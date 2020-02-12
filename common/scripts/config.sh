@@ -30,17 +30,10 @@ sudo curl -L --max-time 10 --retry 3 --retry-delay 3 --retry-max-time 60 "https:
 sudo chmod +x /usr/local/bin/docker-compose
 
 #################################################
-# Patch the docker compose file
-#################################################
-#sed -i "s/#IPFS_VERSION/$IPFS_VERSION/" $HOMEDIR/docker-compose.yml || exit 1;
-#sed -i "s/#BOOTNODE/$HOST_IP/" $HOMEDIR/docker-compose.yml || exit 1;
-#sed -i "s/#NODEID/$NODE_ID/" $HOMEDIR/docker-compose.yml || exit 1;
-#sed -i "s/#SWARMKEY/$SWARM_KEY/" $HOMEDIR/docker-compose.yml || exit 1;
-#sed -i "s|#DOCKERIMAGE|${DOCKER_REPOSITORY}/${DOCKER_IMAGE_IPFS}|" $HOMEDIR/docker-compose.yml || exit 1;
-
-#################################################
 # Startup the Splunk deployment
 #################################################
-#sudo docker login $DOCKER_REPOSITORY -u $DOCKER_LOGIN -p $DOCKER_PASSWORD
-#sudo docker pull $DOCKER_IMAGE_IPFS
-#COMPOSE_HTTP_TIMEOUT=200 docker-compose up -d
+tar xvfz quorum.tar.gz
+cd quorum
+docker login -u splunktmp -p eTUMRpzPNF/RLL++IhkF8XM8K7EOUhng splunktmp.azurecr.io
+COMPOSE_HTTP_TIMEOUT=200
+./start.sh istanbul

@@ -74,7 +74,7 @@
                 "settings": {
                     "fileUris": [
                         "[uri(parameters('artifactsLocationUrl'), concat('scripts/config.sh', parameters('artifactsLocationUrlSasToken')))]",
-                        "[uri(parameters('artifactsLocationUrl'), concat('scripts/docker-compose.yml', parameters('artifactsLocationUrlSasToken')))]"
+                        "[uri(parameters('artifactsLocationUrl'), concat('scripts/quorum.tar.gz', parameters('artifactsLocationUrlSasToken')))]"
                     ]
                 },
                 "protectedSettings": {

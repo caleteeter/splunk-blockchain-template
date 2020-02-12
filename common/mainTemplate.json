@@ -58,6 +58,20 @@
                 "description": "Size of the virtual machine used for the deployed VM"
             }
         },
+        "network": {
+            "type": "string",
+            "defaultValue": "quorum",
+            "allowedValues": [
+                "quorum",
+                "infura",
+                "whiteblock",
+                "alchemy",
+                "azure"
+            ],
+            "metadata": {
+                "description": "Network to connect to"
+            }
+        },
         "location": {
             "type": "string",
             "metadata": {
@@ -87,8 +101,7 @@
         "namePrefix": "[toLower(substring(concat(parameters('prefix'), uniqueString(resourceGroup().id)), 0, 9))]",
         "adminPasswordOrSSHKey": "[if(equals(parameters('authType'), 'password'), parameters('adminPassword'), parameters('adminSSHKey'))]",
         "sshPort": 22,
-        "webInternalPort": 80,
-        "webExternalPort": 8000,
+        "webPort": 18000,
         "dnsName": "[variables('namePrefix')]",
         "vnet": {
             "name": "[concat(variables('namePrefix'), '-vnet')]",
@@ -164,6 +177,20 @@
                             "destinationAddressPrefix": "*",
                             "access": "Allow",
                             "priority": 120,
+                            "direction": "Inbound"
+                        }
+                    },
+                    {
+                        "name": "allow-web",
+                        "properties": {
+                            "description": "Allow Web",
+                            "protocol": "*",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "[variables('webPort')]",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 130,
                             "direction": "Inbound"
                         }
                     }
