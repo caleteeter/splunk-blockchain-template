@@ -11,6 +11,7 @@
         },
         "authType": {
             "type": "string",
+            "defaultValue": "password",
             "allowedValues": [
                 "password",
                 "sshPublicKey"
@@ -33,7 +34,7 @@
             }
         },
         "adminSSHKey": {
-            "type": "string",
+            "type": "securestring",
             "defaultValue": "",
             "metadata": {
                 "description": "SSH RSA public key file as string"
