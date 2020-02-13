@@ -34,5 +34,4 @@ sudo chmod +x /usr/local/bin/docker-compose
 #################################################
 tar xvfz quorum.tar.gz
 cd quorum
-COMPOSE_HTTP_TIMEOUT=200
 ./start.sh istanbul
