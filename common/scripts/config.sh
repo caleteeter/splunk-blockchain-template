@@ -34,6 +34,5 @@ sudo chmod +x /usr/local/bin/docker-compose
 #################################################
 tar xvfz quorum.tar.gz
 cd quorum
-docker login -u splunktmp -p eTUMRpzPNF/RLL++IhkF8XM8K7EOUhng splunktmp.azurecr.io
 COMPOSE_HTTP_TIMEOUT=200
 ./start.sh istanbul
