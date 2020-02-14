@@ -58,20 +58,6 @@
                 "description": "Size of the virtual machine used for the deployed VM"
             }
         },
-        "network": {
-            "type": "string",
-            "defaultValue": "quorum",
-            "allowedValues": [
-                "quorum",
-                "infura",
-                "whiteblock",
-                "alchemy",
-                "azure"
-            ],
-            "metadata": {
-                "description": "Network to connect to"
-            }
-        },
         "location": {
             "type": "string",
             "metadata": {
@@ -98,6 +84,9 @@
         "apiVersionPublicIPAddresses": "2019-11-01",
         "apiVersionNetworkSecurityGroups": "2019-11-01",
         "apiVersionVirtualNetworks": "2019-11-01",
+        "apiVersionVirtualMachine": "2019-07-01",
+        "apiVersionNetworkInterfaces": "2019-11-01",
+        "apiVersionVirtualMachineExtensions": "2019-07-01",
         "namePrefix": "[toLower(substring(concat(parameters('prefix'), uniqueString(resourceGroup().id)), 0, 9))]",
         "adminPasswordOrSSHKey": "[if(equals(parameters('authType'), 'password'), parameters('adminPassword'), parameters('adminSSHKey'))]",
         "sshPort": 22,
@@ -130,6 +119,18 @@
             "offer": "UbuntuServer",
             "sku": "18.04-LTS",
             "version": "latest"
+        },
+        "sshKeyPath": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
+        "linuxConfiguration": {
+            "disablePasswordAuthentication": true,
+            "ssh": {
+                "publicKeys": [
+                    {
+                        "path": "[concat('/home/', parameters('adminUsername'), '/.ssh/authorized_keys')]",
+                        "keyData": "[variables('adminPasswordOrSSHKey')]"
+                    }
+                ]
+            }
         },
         "trackingGuid": "97C69D82-6C87-4EF1-9106-1567FF01CAB3"
     },
@@ -212,104 +213,93 @@
             }
         },
         {
-            "apiVersion": "[variables('apiVersionDeployments')]",
-            "name": "[concat(variables('namePrefix'), '-vm')]",
-            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "[variables('apiVersionNetworkInterfaces')]",
+            "type": "Microsoft.Network/networkInterfaces",
+            "name": "[concat(variables('namePrefix'), '-nic')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
-                "[concat('Microsoft.Network/virtualNetworks/', variables('vNet').name)]",
-                "[concat('Microsoft.Network/networkSecurityGroups/', variables('nsgName'))]",
-                "[concat('Microsoft.Network/publicIpAddresses/', variables('publicIpName'))]"
+                "[concat('Microsoft.Network/virtualNetworks/', variables('vnet').name)]",
+                "[concat('Microsoft.Network/publicIpAddresses/', variables('publicIpName'))]",
+                "[concat('Microsoft.Network/networkSecurityGroups/', variables('nsgName'))]"
             ],
             "properties": {
-                "mode": "Incremental",
-                "templateLink": {
-                    "uri": "[uri(parameters('_artifactsLocation'), concat('nested/vm.json', parameters('_artifactsLocationSasToken')))]",
-                    "contentVersion": "1.0.0.0"
-                },
-                "parameters": {
-                    "authType": {
-                        "value": "[parameters('authType')]"
-                    },
-                    "adminUsername": {
-                        "value": "[parameters('adminUsername')]"
-                    },
-                    "adminPasswordOrKey": {
-                        "value": "[variables('adminPasswordOrSSHKey')]"
-                    },
-                    "vmSize": {
-                        "value": "[parameters('vmSize')]"
-                    },
-                    "storagePerformance": {
-                        "value": "[parameters('vmStoragePerformance')]"
-                    },
-                    "vmName": {
-                        "value": "[variables('namePrefix')]"
-                    },
-                    "dnsName": {
-                        "value": "[variables('dnsName')]"
-                    },
-                    "nicName": {
-                        "value": "[concat(variables('namePrefix'), '-nic')]"
-                    },
-                    "nsgName": {
-                        "value": "[variables('nsgName')]"
-                    },
-                    "subnetRef": {
-                        "value": "[variables('subnetRef')]"
-                    },
-                    "publicIpName": {
-                        "value": "[variables('publicIpName')]"
-                    },
-                    "vmImage": {
-                        "value": "[variables('vmImage')]"
-                    },
-                    "location": {
-                        "value": "[parameters('location')]"
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIpAddress": {
+                                "id": "[resourceid('Microsoft.Network/publicIpAddresses', variables('publicIpName'))]"
+                            },
+                            "subnet": {
+                                "id": "[variables('subnetRef')]"
+                            },
+                            "primary": true
+                        }
                     }
+                ],
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', variables('nsgName'))]"
                 }
             }
         },
         {
-            "apiVersion": "[variables('apiVersionDeployments')]",
-            "name": "[concat(variables('namePrefix'), '-vmext')]",
-            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "[variables('apiVersionVirtualMachine')]",
+            "type": "Microsoft.Compute/virtualMachines",
+            "name": "[variables('namePrefix')]",
+            "location": "[parameters('location')]",
             "dependsOn": [
-                "[concat(variables('namePrefix'), '-vm')]"
+                "[concat('Microsoft.Network/networkInterfaces/', variables('namePrefix'), '-nic')]"
             ],
             "properties": {
-                "mode": "Incremental",
-                "templateLink": {
-                    "uri": "[uri(parameters('_artifactsLocation'), concat('nested/vmExtension.json', parameters('_artifactsLocationSasToken')))]",
-                    "contentVersion": "1.0.0.0"
+                "hardwareProfile": {
+                    "vmSize": "[parameters('vmSize')]"
                 },
-                "parameters": {
-                    "adminUsername": {
-                        "value": "[parameters('adminUsername')]"
-                    },
-                    "vmName": {
-                        "value": "[variables('namePrefix')]"
-                    },
-                    "dockerRepository": {
-                        "value": "[variables('dockerRepository')]"
-                    },
-                    "dockerLogin": {
-                        "value": "[variables('dockerLogin')]"
-                    },
-                    "dockerPassword": {
-                        "value": "[variables('dockerPassword')]"
-                    },
-                    "dockerImage": {
-                        "value": "[variables('dockerImage')]"
-                    },
-                    "artifactsLocationUrl": {
-                        "value": "[parameters('_artifactsLocation')]"
-                    },
-                    "artifactsLocationUrlSasToken": {
-                        "value": "[parameters('_artifactsLocationSasToken')]"
-                    },
-                    "location": {
-                        "value": "[parameters('location')]"
+                "osProfile": {
+                    "computerName": "[variables('dnsName')]",
+                    "adminUsername": "[parameters('adminUsername')]",
+                    "adminPassword": "[variables('adminPasswordOrSSHKey')]",
+                    "linuxConfiguration": "[if(equals(parameters('authType'), 'password'), json('null'), variables('linuxConfiguration'))]"
+                },
+                "storageProfile": {
+                    "imageReference": "[variables('vmImage')]",
+                    "osDisk": {
+                        "createOption": "FromImage",
+                        "managedDisk": {
+                            "storageAccountType": "[concat(parameters('vmStoragePerformance'), '_LRS')]"
+                        }
                     }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(variables('namePrefix'), '-nic'))]"
+                        }
+                    ]
+                }
+            }
+        },
+        {
+            "apiVersion": "[variables('apiVersionVirtualMachineExtensions')]",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "name": "[concat(variables('namePrefix'), '/extensionScript')]",
+            "location": "[parameters('location')]",
+            "dependsOn": [
+                "[concat('Microsoft.Compute/virtualMachines/', variables('namePrefix'))]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.0",
+                "autoUpgradeMinorVersion": true,
+                "settings": {
+                    "fileUris": [
+                        "[uri(parameters('_artifactsLocation'), concat('scripts/config.sh', parameters('_artifactsLocationSasToken')))]",
+                        "[uri(parameters('_artifactsLocation'), concat('scripts/quorum.tar.gz', parameters('_artifactsLocationSasToken')))]"
+                    ]
+                },
+                "protectedSettings": {
+                    "commandToExecute": "[concat('/bin/bash config.sh \"', parameters('adminUsername'), '\" \"', parameters('_artifactsLocation'), '\" \"', parameters('_artifactsLocationSasToken'), '\" \"', variables('dockerRepository'), '\" \"', variables('dockerLogin'), '\" \"', variables('dockerPassword'), '\" \"', variables('dockerImage'), '\"')]"
                 }
             }
         }
