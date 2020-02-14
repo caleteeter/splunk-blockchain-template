@@ -63,20 +63,6 @@
             "metadata": {
                 "description": "Region that the resources will be deployed to"
             }
-        },
-        "_artifactsLocation": {
-            "type": "string",
-            "defaultValue": "https://ctcorestr.blob.core.windows.net/splunkassets/",
-            "metadata": {
-                "description": "The base URI where artifacts required by this template are located including a trailing '/'"
-            }
-        },
-        "_artifactsLocationSasToken": {
-            "type": "securestring",
-            "defaultValue": "",
-            "metadata": {
-                "description": "The sasToken required to access _artifactsLocation.  When the template is deployed using the accompanying scripts, a sasToken will be automatically generated.  Use the defaultValue if the staging location is not secured."
-            }
         }
     },
     "variables": {
@@ -132,6 +118,8 @@
                 ]
             }
         },
+        "artifactsLocation": "https://ctcorestr.blob.core.windows.net/splunkassets/",
+        "artifactsLocationSasToken": "",
         "trackingGuid": "97C69D82-6C87-4EF1-9106-1567FF01CAB3"
     },
     "resources": [
@@ -294,12 +282,12 @@
                 "autoUpgradeMinorVersion": true,
                 "settings": {
                     "fileUris": [
-                        "[uri(parameters('_artifactsLocation'), concat('scripts/config.sh', parameters('_artifactsLocationSasToken')))]",
-                        "[uri(parameters('_artifactsLocation'), concat('scripts/quorum.tar.gz', parameters('_artifactsLocationSasToken')))]"
+                        "[uri(variables('artifactsLocation'), concat('scripts/config.sh', variables('artifactsLocationSasToken')))]",
+                        "[uri(variables('artifactsLocation'), concat('scripts/quorum.tar.gz', variables('artifactsLocationSasToken')))]"
                     ]
                 },
                 "protectedSettings": {
-                    "commandToExecute": "[concat('/bin/bash config.sh \"', parameters('adminUsername'), '\" \"', parameters('_artifactsLocation'), '\" \"', parameters('_artifactsLocationSasToken'), '\" \"', variables('dockerRepository'), '\" \"', variables('dockerLogin'), '\" \"', variables('dockerPassword'), '\" \"', variables('dockerImage'), '\"')]"
+                    "commandToExecute": "[concat('/bin/bash config.sh \"', parameters('adminUsername'), '\" \"', variables('artifactsLocation'), '\" \"', variables('artifactsLocationSasToken'), '\" \"', variables('dockerRepository'), '\" \"', variables('dockerLogin'), '\" \"', variables('dockerPassword'), '\" \"', variables('dockerImage'), '\"')]"
                 }
             }
         }
