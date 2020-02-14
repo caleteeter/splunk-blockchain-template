@@ -57,12 +57,6 @@
             "metadata": {
                 "description": "Size of the virtual machine used for the deployed VM"
             }
-        },
-        "location": {
-            "type": "string",
-            "metadata": {
-                "description": "Region that the resources will be deployed to"
-            }
         }
     },
     "variables": {
@@ -120,6 +114,7 @@
         },
         "artifactsLocation": "https://ctcorestr.blob.core.windows.net/splunkassets/",
         "artifactsLocationSasToken": "",
+        "location": "[resourceGroup().location]",
         "trackingGuid": "97C69D82-6C87-4EF1-9106-1567FF01CAB3"
     },
     "resources": [
@@ -140,7 +135,7 @@
             "apiVersion": "[variables('apiVersionPublicIPAddresses')]",
             "type": "Microsoft.Network/publicIPAddresses",
             "name": "[variables('publicIpName')]",
-            "location": "[parameters('location')]",
+            "location": "[variables('location')]",
             "properties": {
                 "publicIPAllocationMethod": "Dynamic",
                 "dnsSettings": {
@@ -152,7 +147,7 @@
             "apiVersion": "[variables('apiVersionNetworkSecurityGroups')]",
             "type": "Microsoft.Network/networkSecurityGroups",
             "name": "[variables('nsgName')]",
-            "location": "[parameters('location')]",
+            "location": "[variables('location')]",
             "properties": {
                 "securityRules": [
                     {
@@ -190,7 +185,7 @@
             "apiVersion": "[variables('apiVersionVirtualNetworks')]",
             "type": "Microsoft.Network/virtualNetworks",
             "name": "[variables('vnet').name]",
-            "location": "[parameters('location')]",
+            "location": "[variables('location')]",
             "properties": {
                 "addressSpace": {
                     "addressPrefixes": [
@@ -204,7 +199,7 @@
             "apiVersion": "[variables('apiVersionNetworkInterfaces')]",
             "type": "Microsoft.Network/networkInterfaces",
             "name": "[concat(variables('namePrefix'), '-nic')]",
-            "location": "[parameters('location')]",
+            "location": "[variables('location')]",
             "dependsOn": [
                 "[concat('Microsoft.Network/virtualNetworks/', variables('vnet').name)]",
                 "[concat('Microsoft.Network/publicIpAddresses/', variables('publicIpName'))]",
@@ -235,7 +230,7 @@
             "apiVersion": "[variables('apiVersionVirtualMachine')]",
             "type": "Microsoft.Compute/virtualMachines",
             "name": "[variables('namePrefix')]",
-            "location": "[parameters('location')]",
+            "location": "[variables('location')]",
             "dependsOn": [
                 "[concat('Microsoft.Network/networkInterfaces/', variables('namePrefix'), '-nic')]"
             ],
@@ -271,7 +266,7 @@
             "apiVersion": "[variables('apiVersionVirtualMachineExtensions')]",
             "type": "Microsoft.Compute/virtualMachines/extensions",
             "name": "[concat(variables('namePrefix'), '/extensionScript')]",
-            "location": "[parameters('location')]",
+            "location": "[variables('location')]",
             "dependsOn": [
                 "[concat('Microsoft.Compute/virtualMachines/', variables('namePrefix'))]"
             ],
